@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const mysql = require('mysql2');
 const bcrypt = require('bcryptjs');
@@ -12,10 +13,11 @@ app.use(express.json());
 // MySQL connection
 // ==========================
 const db = mysql.createConnection({
-    host: 'localhost',   // ตามที่คุณต้องการ
-    user: 'root',        
-    password: '',        
-    database: 'user'     
+    host: 'localhost',   // ใช้ localhost สำหรับ local testing
+    user: 'root',
+    password: '',
+    database: 'user',
+    port: 3306
 });
 
 db.connect(err => {
@@ -30,6 +32,13 @@ db.connect(err => {
 // JWT secret
 // ==========================
 const JWT_SECRET = 'mysecretkey';
+
+// ==========================
+// Test root route
+// ==========================
+app.get('/', (req, res) => {
+    res.send('Backend is running');
+});
 
 // ==========================
 // Register route
@@ -76,13 +85,13 @@ app.post('/login', (req, res) => {
 // ==========================
 app.get('/protected', (req, res) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader?.split(' ')[1];
+    const token = authHeader?.split(' ')[1]; // Bearer <token>
 
     if (!token) return res.status(401).json({ error: 'No token provided' });
 
     jwt.verify(token, JWT_SECRET, (err, decoded) => {
         if (err) return res.status(401).json({ error: 'Invalid token' });
-        res.json({ user: decoded });
+        res.json({ message: 'Welcome!', user: decoded });
     });
 });
 
