@@ -1,31 +1,20 @@
 // server.js
 const express = require('express');
-const mysql = require('mysql2');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // ==========================
-// MySQL connection
+// Supabase setup
 // ==========================
-const db = mysql.createConnection({
-    host: 'localhost',   // ใช้ localhost สำหรับ local testing
-    user: 'root',
-    password: '',
-    database: 'usersdatabase'
-});
-
-db.connect(err => {
-    if (err) {
-        console.error('Database connection failed:', err);
-        return;
-    }
-    console.log('MySQL Connected...');
-});
+const supabaseUrl = 'https://mtcjhuwygjwxnthwxqsk.supabase.co';
+const supabaseKey = process.env.SUPABASE_KEY; // <-- ดึงจาก environment variable
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ==========================
 // JWT secret
@@ -36,47 +25,58 @@ const JWT_SECRET = 'mysecretkey';
 // Test root route
 // ==========================
 app.get('/', (req, res) => {
-    res.send('Backend is running');
+    res.send('Backend is running ✅');
 });
 
 // ==========================
 // Register route
 // ==========================
-app.post('/register', (req, res) => {
+app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Missing username or password' });
 
-    const hashed = bcrypt.hashSync(password, 8);
+    try {
+        const hashed = bcrypt.hashSync(password, 8);
 
-    db.query(
-        'INSERT INTO users (username, password) VALUES (?, ?)',
-        [username, hashed],
-        (err) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: 'User registered successfully' });
-        }
-    );
+        const { data, error } = await supabase
+            .from('users')
+            .insert([{ username, password: hashed }]);
+
+        if (error) throw error;
+
+        res.json({ message: 'User registered successfully', user: data[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ==========================
 // Login route
 // ==========================
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Missing username or password' });
 
-    db.query('SELECT * FROM users WHERE username = ?', [username], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (result.length === 0) return res.status(400).json({ error: 'User not found' });
+    try {
+        const { data: users, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('username', username)
+            .limit(1);
 
-        const user = result[0];
+        if (error) throw error;
+        if (users.length === 0) return res.status(400).json({ error: 'User not found' });
+
+        const user = users[0];
         const valid = bcrypt.compareSync(password, user.password);
         if (!valid) return res.status(401).json({ error: 'Invalid password' });
 
         const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '1h' });
 
         res.json({ message: 'Login success', token, user: { username: user.username } });
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ==========================
