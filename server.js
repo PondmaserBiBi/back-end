@@ -1,4 +1,6 @@
 // server.js
+require('dotenv').config(); 
+
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -13,7 +15,7 @@ app.use(express.json());
 // Supabase setup
 // ==========================
 const supabaseUrl = 'https://mtcjhuwygjwxnthwxqsk.supabase.co';
-const supabaseKey = process.env.SUPABASE_KEY; // <-- ดึงจาก environment variable
+const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ==========================
