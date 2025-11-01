@@ -16,8 +16,7 @@ const db = mysql.createConnection({
     host: 'localhost',   // ใช้ localhost สำหรับ local testing
     user: 'root',
     password: '',
-    database: 'user',
-    port: 3306
+    database: 'usersdatabase'
 });
 
 db.connect(err => {
