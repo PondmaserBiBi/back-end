@@ -1,5 +1,5 @@
 // server.js
-require('dotenv').config(); 
+require('dotenv').config(); // โหลด .env
 
 const express = require('express');
 const bcrypt = require('bcryptjs');
@@ -12,19 +12,28 @@ app.use(cors());
 app.use(express.json());
 
 // ==========================
-// Supabase setup
+// ตรวจสอบ SUPABASE_KEY
 // ==========================
 const supabaseUrl = 'https://mtcjhuwygjwxnthwxqsk.supabase.co';
 const supabaseKey = process.env.SUPABASE_KEY;
+
+if (!supabaseKey) {
+    console.error('❌ SUPABASE_KEY is missing. Please set it in your .env or environment variables.');
+    process.exit(1); // จบ process ทันที
+}
+
+// ==========================
+// สร้าง Supabase client
+// ==========================
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ==========================
 // JWT secret
 // ==========================
-const JWT_SECRET = 'mysecretkey';
+const JWT_SECRET = process.env.JWT_SECRET || 'mysecretkey';
 
 // ==========================
-// Test root route
+// Root route
 // ==========================
 app.get('/', (req, res) => {
     res.send('Backend is running ✅');
@@ -48,6 +57,7 @@ app.post('/register', async (req, res) => {
 
         res.json({ message: 'User registered successfully', user: data[0] });
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -67,7 +77,7 @@ app.post('/login', async (req, res) => {
             .limit(1);
 
         if (error) throw error;
-        if (users.length === 0) return res.status(400).json({ error: 'User not found' });
+        if (!users || users.length === 0) return res.status(400).json({ error: 'User not found' });
 
         const user = users[0];
         const valid = bcrypt.compareSync(password, user.password);
@@ -77,12 +87,13 @@ app.post('/login', async (req, res) => {
 
         res.json({ message: 'Login success', token, user: { username: user.username } });
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: err.message });
     }
 });
 
 // ==========================
-// Protected route example
+// Protected route
 // ==========================
 app.get('/protected', (req, res) => {
     const authHeader = req.headers['authorization'];
